@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { z } from "zod";
 import { fetchPageText } from "../../../lib/fetchPageText";
 
+export const runtime = "nodejs";
+
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY || "");
 const MODEL = process.env.GEMINI_MODEL || "gemini-1.5-pro";
 
@@ -12,13 +14,14 @@ const BodySchema = z.object({
   language: z.enum(["vi", "en"]).default("vi"),
 });
 
+type ParsedSections = { section1: string; section2: string };
+
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const body = (await req.json()) as unknown;
     const { url, studentName, language } = BodySchema.parse(body);
 
     const pageText = await fetchPageText(url);
-
     const prompt = buildPrompt({ url, pageText, studentName, language });
 
     const model = genAI.getGenerativeModel({ model: MODEL });
@@ -26,24 +29,36 @@ export async function POST(req: NextRequest) {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    // Văn bản thô trả về từ model
-    const rawText = result.response.text();
+    let rawText = result.response.text();
 
-    // =================== NEW: loại bỏ toàn bộ dấu * ===================
-    // Nếu muốn chỉ xóa * đơn, giữ lại ** bôi đậm, đổi regex thành /(?<!\*)\*(?!\*)/g
-    const cleanedText = rawText.replace(/\*/g, "");
-    // ==================================================================
+    // 1. Loại bỏ tất cả dấu *
+    let cleanedText = rawText.replace(/\*/g, "");
 
-    // Tách 2 phần theo tiêu đề yêu cầu
+    // 2. Loại bỏ (giả định) hoặc [giả định] hoặc chữ "giả định" đứng riêng
+    cleanedText = cleanedText.replace(/\(?giả định\)?/gi, "");
+
+    // 3. Chuẩn hoá đầu dòng: thêm "-" nếu thiếu
+    cleanedText = cleanedText
+      .split("\n")
+      .map((line) => {
+        const trimmed = line.trim();
+        if (trimmed === "") return "";
+        // Nếu dòng chưa bắt đầu bằng "-" hay số thứ tự, thêm "-"
+        if (!/^\s*(-|\d+\.)/.test(trimmed)) {
+          return `- ${trimmed}`;
+        }
+        return trimmed;
+      })
+      .join("\n");
+
     const parsed = parseTwoSections(cleanedText);
 
     return NextResponse.json({ ok: true, ...parsed });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
-    return NextResponse.json(
-      { ok: false, error: err?.message || "Unknown error" },
-      { status: 400 }
-    );
+    const message =
+      err instanceof Error ? err.message : typeof err === "string" ? err : "Unknown error";
+    return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }
 
@@ -57,10 +72,9 @@ function buildPrompt({
   pageText: string;
   studentName?: string;
   language: "vi" | "en";
-}) {
+}): string {
   const name = studentName ? `Tên học sinh: ${studentName}` : "";
-  const langIntro =
-    language === "vi" ? "Hãy trả lời bằng tiếng Việt." : "Reply in English.";
+  const langIntro = language === "vi" ? "Hãy trả lời bằng tiếng Việt." : "Reply in English.";
 
   return `Bạn là giáo viên bộ môn CNTT, đang được yêu cầu viết báo cáo nhận xét dựa trên porfolio (đường link: ${url}). ${langIntro}
 
@@ -90,11 +104,8 @@ Yêu cầu trình bày:
 ${name}`;
 }
 
-function parseTwoSections(raw: string) {
-  const s1 =
-    /Noi dung bai hoc[\s\S]*?(?=\n\s*2\)|\n\s*Nhan xet hoc sinh|$)/i.exec(
-      raw
-    )?.[0]?.trim();
+function parseTwoSections(raw: string): ParsedSections {
+  const s1 = /Noi dung bai hoc[\s\S]*?(?=\n\s*2\)|\n\s*Nhan xet hoc sinh|$)/i.exec(raw)?.[0]?.trim();
   const s2 = /Nhan xet hoc sinh[\s\S]*/i.exec(raw)?.[0]?.trim();
   return { section1: s1 || "", section2: s2 || "" };
 }
