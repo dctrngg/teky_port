@@ -29,31 +29,24 @@ export async function POST(req: NextRequest) {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    let rawText = result.response.text();
+    // ✅ rawText không bị gán lại → dùng const để hết prefer-const
+    const rawText = result.response.text();
 
-    // 1. Loại bỏ tất cả dấu *
-    let cleanedText = rawText.replace(/\*/g, "");
+    // Làm sạch cơ bản (KHÔNG thêm '-' ở bước này)
+    let cleaned = rawText
+      .replace(/\*/g, "")                  // bỏ dấu *
+      .replace(/\(?giả định\)?/gi, "")     // bỏ (giả định)/giả định
+      .replace(/[ \t]+\n/g, "\n")
+      .trim();
 
-    // 2. Loại bỏ (giả định) hoặc [giả định] hoặc chữ "giả định" đứng riêng
-    cleanedText = cleanedText.replace(/\(?giả định\)?/gi, "");
+    // Tách 2 phần trước
+    const parsed = parseTwoSections(cleaned);
 
-    // 3. Chuẩn hoá đầu dòng: thêm "-" nếu thiếu
-    cleanedText = cleanedText
-      .split("\n")
-      .map((line) => {
-        const trimmed = line.trim();
-        if (trimmed === "") return "";
-        // Nếu dòng chưa bắt đầu bằng "-" hay số thứ tự, thêm "-"
-        if (!/^\s*(-|\d+\.)/.test(trimmed)) {
-          return `- ${trimmed}`;
-        }
-        return trimmed;
-      })
-      .join("\n");
+    // Chuẩn hoá bullet sau khi đã tách
+    const section1 = normalizeBullets(parsed.section1, /Noi dung bai hoc/i);
+    const section2 = normalizeBullets(parsed.section2, /Nhan xet hoc sinh/i);
 
-    const parsed = parseTwoSections(cleanedText);
-
-    return NextResponse.json({ ok: true, ...parsed });
+    return NextResponse.json({ ok: true, section1, section2 });
   } catch (err: unknown) {
     console.error(err);
     const message =
@@ -104,8 +97,55 @@ Yêu cầu trình bày:
 ${name}`;
 }
 
+/** Regex linh hoạt cho tiêu đề */
+const TITLE_1 = /(?:^|\n)\s*(?:#{1,6}\s*)?(?:1\)|\d+\.)?\s*Noi dung bai hoc\b/i;
+const TITLE_2 = /(?:^|\n)\s*(?:#{1,6}\s*)?(?:2\)|\d+\.)?\s*Nhan xet hoc sinh\b/i;
+
 function parseTwoSections(raw: string): ParsedSections {
-  const s1 = /Noi dung bai hoc[\s\S]*?(?=\n\s*2\)|\n\s*Nhan xet hoc sinh|$)/i.exec(raw)?.[0]?.trim();
-  const s2 = /Nhan xet hoc sinh[\s\S]*/i.exec(raw)?.[0]?.trim();
-  return { section1: s1 || "", section2: s2 || "" };
+  const m1 = TITLE_1.exec(raw);
+  const m2 = TITLE_2.exec(raw);
+
+  if (m1 && m2) {
+    const start1 = m1.index;
+    const start2 = m2.index;
+    if (start1 <= start2) {
+      const part1 = raw.slice(start1, start2).trim();
+      const part2 = raw.slice(start2).trim();
+      return { section1: part1, section2: part2 };
+    }
+  }
+
+  const altSplit =
+    raw.split(/(?:^|\n)\s*(?:#{1,6}\s*)?(?:2\)|\d+\.)?\s*Nhan\s*xet\s*hoc\s*sinh\b/i);
+  if (altSplit.length === 2) {
+    const left = altSplit[0].trim();
+    const right = raw.slice(raw.length - altSplit[1].length).trim();
+    return {
+      section1: left,
+      section2: right.startsWith("Nhan xet hoc sinh") ? right : `Nhan xet hoc sinh\n${right}`,
+    };
+  }
+
+  return { section1: raw.trim(), section2: "" };
+}
+
+/** Thêm '-' cho nội dung, giữ nguyên dòng tiêu đề */
+function normalizeBullets(block: string, headerPattern: RegExp): string {
+  const lines = block.split("\n");
+  return lines
+    .map((l, idx) => {
+      const line = l.trim();
+      if (!line) return "";
+      if (
+        headerPattern.test(line) ||
+        (idx === 0 && /^(?:#{1,6}\s*)?(?:\d+\)|\d+\.)?\s*\S/.test(line) && headerPattern.test(block))
+      ) {
+        return line;
+      }
+      if (/^(-|\*|\u2022|\d+[\.\)])\s+/.test(line)) return line;
+      return `- ${line}`;
+    })
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }

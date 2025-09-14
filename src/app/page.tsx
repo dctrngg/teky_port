@@ -78,7 +78,7 @@ export default function Home() {
           <div className="hero-inner">
             <h1 className="hero-headline">Teky Portfolio</h1>
             <p className="hero-sub">
-              with a passion for creating thoughtful and visually stunning digital experiences.
+              một công cụ trợ giúp giáo viên tạo nhận xét portfolio học sinh nhanh hơn.
             </p>
           </div>
         </div>
