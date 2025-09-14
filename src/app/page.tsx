@@ -1,103 +1,165 @@
-import Image from "next/image";
+"use client";
+import { useRef, useState } from "react";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [url, setUrl] = useState("");
+  const [studentName, setStudentName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [s1, setS1] = useState<string>("");
+  const [s2, setS2] = useState<string>("");
+  const [error, setError] = useState<string>("");
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const formRef = useRef<HTMLDivElement | null>(null);
+  const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(""); setS1(""); setS2(""); setLoading(true);
+    try {
+      const res = await fetch("/api/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, studentName, language: "vi" }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || "Request failed");
+      setS1(data.section1 || ""); setS2(data.section2 || "");
+    } catch (err: any) {
+      setError(err?.message || "Lỗi không xác định");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const copyText = (t: string) => navigator.clipboard.writeText(t);
+  const hasResults = Boolean(s1 || s2);
+
+  return (
+    <main>
+      {/* ===== HERO (giống ảnh) ===== */}
+      <div className="hero">
+        <div className="wrapper">
+          {/* NAV */}
+          <nav className="nav">
+            <div className="brand">
+              <div className="brand-badge"></div>
+              <div className="brand-text">
+                <div className="brand-name">dctrng</div>
+                <div className="brand-role">UX/UI DESIGNER</div>
+              </div>
+            </div>
+           
+            <a href="https://www.linkedin.com" target="_blank" className="nav-right" rel="noreferrer">in</a>
+          </nav>
+
+          {/* HEADING */}
+          <div className="hero-inner">
+            <h1 className="hero-headline">Teky Portfolio</h1>
+            <p className="hero-sub">
+              with a passion for creating thoughtful and visually stunning digital experiences.
+            </p>
+            
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+      </div>
+
+      {/* ===== ỨNG DỤNG CỦA BẠN (Form + Kết quả) ===== */}
+      <div className="section" ref={formRef}>
+        <div className="wrapper">
+          <section className="grid">
+            {/* FORM */}
+            <div className="card span-form">
+              <h2>Tạo nhận xét</h2>
+              <form onSubmit={onSubmit} style={{ marginTop: 16, display: "grid", gap: 16 }}>
+                <div>
+                  <label htmlFor="url" className="label">Đường link portfolio</label>
+                  <input id="url" type="url" required placeholder="https://..." className="input"
+                         value={url} onChange={(e)=>setUrl(e.target.value)} />
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>
+                    Ví dụ: https://tensite.vercel.app, Google Sites, Notion…
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="studentName" className="label">Tên học sinh (tuỳ chọn)</label>
+                  <input id="studentName" type="text" placeholder="Nguyễn Văn A" className="input"
+                         value={studentName} onChange={(e)=>setStudentName(e.target.value)} />
+                </div>
+
+                <div className="row">
+                  <button className="btn btn-primary" disabled={loading} type="submit">
+                    {loading ? "Đang tạo…" : "Tạo nhận xét"}
+                  </button>
+                  <button className="btn" type="button" disabled={loading}
+                    onClick={() => { setUrl(""); setStudentName(""); setS1(""); setS2(""); setError(""); }}>
+                    Xoá nội dung
+                  </button>
+                </div>
+
+                {error && <div className="alert-error">{error}</div>}
+              </form>
+            </div>
+
+            {/* TIPS */}
+            <div className="card span-tips">
+              <h2>Mẹo tối ưu đầu vào</h2>
+              <div style={{ marginTop: 12, color: "#334155", fontSize: 14, lineHeight: 1.6 }}>
+                <ul style={{ paddingLeft: 18, margin: 0 }}>
+                  <li>Dùng URL public, nội dung có tiêu đề/heading rõ.</li>
+                  <li>Có phần kỹ năng/công nghệ và ví dụ dự án.</li>
+                  <li>Nếu site dài, để mục lục giúp trích xuất chuẩn hơn.</li>
+                </ul>
+                <div style={{ marginTop: 10, fontSize: 12, color: "#64748b" }}>
+                  Lưu ý: API đã loại bỏ dấu <code>*</code> trong kết quả để tránh markdown không mong muốn.
+                </div>
+              </div>
+            </div>
+
+            {/* KẾT QUẢ 1 */}
+            <div className="card span-result">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <h2>Nội dung bài học</h2>
+                <button className="btn" type="button" onClick={()=>copyText(s1)} disabled={!s1}>Copy</button>
+              </div>
+              <div className="pretty-text" style={{ marginTop: 12 }}>{s1 || (
+                <div>
+                  <div className="skeleton-line w60"></div>
+                  <div className="skeleton-line w80" style={{ marginTop: 10 }}></div>
+                  <div className="skeleton-line w66" style={{ marginTop: 10 }}></div>
+                </div>
+              )}</div>
+            </div>
+
+            {/* KẾT QUẢ 2 */}
+            <div className="card span-result">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <h2>Nhận xét học sinh</h2>
+                <button className="btn" type="button" onClick={()=>copyText(s2)} disabled={!s2}>Copy</button>
+              </div>
+              <div className="pretty-text" style={{ marginTop: 12 }}>{s2 || (
+                <div>
+                  <div className="skeleton-line w60"></div>
+                  <div className="skeleton-line w80" style={{ marginTop: 10 }}></div>
+                  <div className="skeleton-line w50" style={{ marginTop: 10 }}></div>
+                </div>
+              )}</div>
+            </div>
+
+            {/* STATUS */}
+            <div className="card span-wide">
+              <div style={{ display: "flex", gap: 16, justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>Trạng thái</div>
+                  <div style={{ marginTop: 6, color: "#475569", fontSize: 14 }}>
+                    {loading ? "Đang gọi API Gemini…" : hasResults ? "Hoàn tất. Bạn có thể copy từng phần." : "Chưa có kết quả. Hãy nhập URL và bấm Tạo nhận xét."}
+                  </div>
+                </div>
+                <div style={{ color: "#94a3b8", fontSize: 12 }}>© {new Date().getFullYear()} – Công cụ trợ giúp nhận xét portfolio</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
   );
 }
