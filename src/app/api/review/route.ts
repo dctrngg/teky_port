@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const rawText = result.response.text();
 
     // Làm sạch cơ bản (KHÔNG thêm '-' ở bước này)
-    let cleaned = rawText
+    const cleaned = rawText
       .replace(/\*/g, "")                  // bỏ dấu *
       .replace(/\(?giả định\)?/gi, "")     // bỏ (giả định)/giả định
       .replace(/[ \t]+\n/g, "\n")
