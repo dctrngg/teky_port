@@ -8,6 +8,33 @@ type ReviewResponse = {
   section2?: string;
 };
 
+const strengths = [
+  "Em luôn tích cực phát biểu trong giờ học.",
+  "Em hoàn thành bài tập đúng hạn và đảm bảo chất lượng.",
+  "Em hợp tác tốt với các bạn trong các hoạt động nhóm.",
+  "Em thường đưa ra những ý tưởng sáng tạo và mới mẻ.",
+  "Em có tinh thần tự giác trong học tập.",
+  "Em giữ thái độ học tập nghiêm túc và tôn trọng thầy cô.",
+  "Em thể hiện sự kiên nhẫn khi giải quyết vấn đề khó.",
+  "Em có khả năng tiếp thu kiến thức nhanh.",
+  "Em biết lắng nghe góp ý và điều chỉnh kịp thời.",
+  "Em thể hiện sự chủ động trong việc tìm kiếm và mở rộng kiến thức."
+];
+
+const weaknesses = [
+  "Em đôi khi chưa tập trung trong giờ học.",
+  "Em vẫn có tình trạng nộp bài muộn ở một số môn.",
+  "Em cần cải thiện thêm kỹ năng trình bày ý tưởng.",
+  "Em còn thiếu sự tự tin khi phát biểu trước lớp.",
+  "Em chưa quản lý thời gian học tập thật hiệu quả.",
+  "Em dễ bị phân tâm bởi môi trường xung quanh.",
+  "Em chưa thường xuyên đặt câu hỏi khi chưa hiểu bài.",
+  "Em còn ngại tham gia thảo luận nhóm.",
+  "Em cần rèn luyện thêm khả năng viết báo cáo mạch lạc.",
+  "Em chưa duy trì được thói quen ôn tập đều đặn."
+];
+
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [studentName, setStudentName] = useState("");
@@ -16,33 +43,69 @@ export default function Home() {
   const [s2, setS2] = useState<string>("");
   const [error, setError] = useState<string>("");
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError("");
-    setS1("");
-    setS2("");
-    setLoading(true);
+  const [selectedStrengths, setSelectedStrengths] = useState<string[]>([]);
+  const [selectedWeaknesses, setSelectedWeaknesses] = useState<string[]>([]);
 
-    try {
-      const res = await fetch("/api/review", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, studentName, language: "vi" }),
-      });
+  const toggleStrength = (s: string) => {
+    setSelectedStrengths((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
+    );
+  };
 
-      const data: ReviewResponse = await res.json();
-      if (!data.ok) throw new Error(data.error || "Request failed");
+  const toggleWeakness = (w: string) => {
+    setSelectedWeaknesses((prev) =>
+      prev.includes(w) ? prev.filter((x) => x !== w) : [...prev, w]
+    );
+  };
 
-      setS1(data.section1 ?? "");
-      setS2(data.section2 ?? "");
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : typeof err === "string" ? err : "Lỗi không xác định";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+  e.preventDefault();
+  setError("");
+  setS1("");
+  setS2("");
+  setLoading(true);
+
+  try {
+    const res = await fetch("/api/review", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url,
+        studentName,
+        language: "vi",
+        strengths: selectedStrengths,
+        weaknesses: selectedWeaknesses,
+      }),
+    });
+
+    const data: ReviewResponse = await res.json();
+    if (!data.ok) throw new Error(data.error || "Request failed");
+
+    // ===== CHUẨN BỊ PHẦN GIÁO VIÊN =====
+    const strengthsList = selectedStrengths.length
+      ? selectedStrengths.map((s) => `- ${s}`).join("\n")
+      : "- Không có";
+    const weaknessesList = selectedWeaknesses.length
+      ? selectedWeaknesses.map((w) => `- ${w}`).join("\n")
+      : "- Không có";
+
+    // Tạo block ưu nhược điểm của giáo viên
+    const teacherReview = ` Ưu điểm:\n${strengthsList}\n\n Nhược điểm:\n${weaknessesList}\n`;
+
+    // Ghép: tick giáo viên trước, AI sau
+    const reviewText = `\n\n${teacherReview}\n${data.section2 ?? ""}`;
+
+    setS1(data.section1 ?? "");
+    setS2(reviewText.trim());
+  } catch (err: unknown) {
+    const msg =
+      err instanceof Error ? err.message : typeof err === "string" ? err : "Lỗi không xác định";
+    setError(msg);
+  } finally {
+    setLoading(false);
   }
+}
+
 
   const copyText = (t: string) => {
     void navigator.clipboard.writeText(t);
@@ -60,7 +123,7 @@ export default function Home() {
               <div className="brand-badge" />
               <div className="brand-text">
                 <div className="brand-name">dctrng</div>
-                <div className="brand-role">UX/UI DESIGNER</div>
+                <div className="brand-role">qack qack</div>
               </div>
             </div>
 
@@ -70,7 +133,7 @@ export default function Home() {
               className="nav-right"
               rel="noreferrer"
             >
-              in
+              
             </a>
           </nav>
 
@@ -138,6 +201,8 @@ export default function Home() {
                       setS1("");
                       setS2("");
                       setError("");
+                      setSelectedStrengths([]);
+                      setSelectedWeaknesses([]);
                     }}
                   >
                     Xoá nội dung
@@ -147,8 +212,7 @@ export default function Home() {
                 {error && <div className="alert-error">{error}</div>}
               </form>
             </div>
-
-            {/* TIPS */}
+              {/* TIPS */}
             <div className="card span-tips">
               <h2>Mẹo tối ưu đầu vào</h2>
               <div style={{ marginTop: 12, color: "#334155", fontSize: 14, lineHeight: 1.6 }}>
@@ -162,6 +226,41 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
+            {/* ƯU ĐIỂM */}
+<div className="card span-result">
+  <h2>Ưu điểm</h2>
+  <div style={{ marginTop: 12 }}>
+    {strengths.map((s) => (
+      <label key={s} style={{ display: "block", marginTop: 4 }}>
+        <input
+          type="checkbox"
+          checked={selectedStrengths.includes(s)}
+          onChange={() => toggleStrength(s)}
+        />{" "}
+        {s}
+      </label>
+    ))}
+  </div>
+</div>
+
+{/* NHƯỢC ĐIỂM */}
+<div className="card span-result">
+  <h2>Nhược điểm</h2>
+  <div style={{ marginTop: 12 }}>
+    {weaknesses.map((w) => (
+      <label key={w} style={{ display: "block", marginTop: 4 }}>
+        <input
+          type="checkbox"
+          checked={selectedWeaknesses.includes(w)}
+          onChange={() => toggleWeakness(w)}
+        />{" "}
+        {w}
+      </label>
+    ))}
+  </div>
+</div>
+
 
             {/* KẾT QUẢ 1 */}
             <div className="card span-result">

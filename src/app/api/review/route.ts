@@ -83,15 +83,18 @@ Yêu cầu đầu ra: Viết đúng 2 phần lớn, theo thứ tự như sau (kh
 - Liệt kê có cấu trúc, súc tích, song vẫn đủ chiều sâu, trích dẫn ví dụ cụ thể từ porfolio.
 
 2) Nhan xet hoc sinh
-- Đánh giá điểm mạnh: kỹ thuật, thẩm mỹ, cách trình bày, mức độ hoàn thiện, tính sáng tạo.
+- Đánh giá chung: kỹ thuật, thẩm mỹ, cách trình bày, mức độ hoàn thiện, tính sáng tạo.
 - Góp ý cải thiện: rõ ràng, khả năng mở rộng, tổ chức code/nội dung, kiểm thử, hiệu năng, bảo mật, khả năng trình bày.
 - Đưa ra 3-5 việc làm cụ thể để nâng cấp porfolio trong 1-2 tuần tới.
 
 Yêu cầu trình bày:
+- Hãy trả lời bằng giọng văn của một giáo viên giàu kinh nghiệm, khách quan, mang tính xây dựng.
+- Tránh nói quá chung chung, hãy cụ thể và thực tế.
+- Tránh sử dụng các cụm từ như "Dựa trên porfolio của em", "Từ những gì em đã chia sẻ", "Có thể thấy rằng", v.v.
+- Không thêm phần mở đầu/kết luận.
 - Viết bằng tiếng Việt phổ thông, lịch sự, khách quan.
 - Dùng gạch đầu dòng, tiêu đề rõ ràng.
 - Gọi học sinh bằng "em".
-- Nếu dữ liệu trang thiếu, hãy nêu giả định hợp lý và ghi chú "(giả định)".
 - Kết quả **phải** chứa đúng hai phần, đánh dấu rõ bằng tiêu đề: "Noi dung bai hoc" và "Nhan xet hoc sinh".
 
 ${name}`;
@@ -129,22 +132,22 @@ function parseTwoSections(raw: string): ParsedSections {
   return { section1: raw.trim(), section2: "" };
 }
 
-/** Thêm '-' cho nội dung, giữ nguyên dòng tiêu đề */
+/** Thêm '-' cho nội dung, bỏ dòng tiêu đề */
 function normalizeBullets(block: string, headerPattern: RegExp): string {
   const lines = block.split("\n");
   return lines
     .map((l, idx) => {
       const line = l.trim();
       if (!line) return "";
-      if (
-        headerPattern.test(line) ||
-        (idx === 0 && /^(?:#{1,6}\s*)?(?:\d+\)|\d+\.)?\s*\S/.test(line) && headerPattern.test(block))
-      ) {
-        return line;
-      }
+      if (headerPattern.test(line)) return "";
+
+      // Nếu dòng đã có bullet/number thì giữ nguyên
       if (/^(-|\*|\u2022|\d+[\.\)])\s+/.test(line)) return line;
+
+      // Thêm dấu '-' cho các dòng nội dung thường
       return `- ${line}`;
     })
+    .filter(Boolean) // loại bỏ string rỗng
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
